@@ -1,0 +1,170 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Form to PDF</title>
+    <style>
+        body {
+            font-family: 'Arial', sans-serif;
+            margin: 0;
+            padding: 0;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            background-color: #eef2f3;
+            background-image: linear-gradient(315deg, #eef2f3 0%, #8e9eab 74%);
+        }
+        .container {
+            background-color: #ffffff;
+            padding: 30px;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.2);
+            border-radius: 10px;
+            width: 90%;
+            max-width: 400px;
+            transition: transform 0.3s;
+        }
+        .container:hover {
+            transform: translateY(-5px);
+        }
+        .container h2 {
+            text-align: center;
+            margin-bottom: 20px;
+            color: #333;
+        }
+        .container img {
+            display: block;
+            margin: 0 auto 20px;
+            width: 80px; /* Adjust the logo size as needed */
+        }
+        .container label {
+            display: block;
+            margin-bottom: 5px;
+            font-weight: bold;
+            color: #555;
+        }
+        .container input, .container textarea {
+            width: 100%;
+            padding: 12px;
+            margin-bottom: 15px;
+            border: 1px solid #ccc;
+            border-radius: 5px;
+            font-size: 16px;
+            transition: border-color 0.3s;
+        }
+        .container input:focus, .container textarea:focus {
+            border-color: #28a745;
+            outline: none;
+        }
+        .container button {
+            width: 100%;
+            padding: 12px;
+            background-color: #28a745;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            font-size: 18px;
+            cursor: pointer;
+            transition: background-color 0.3s;
+        }
+        .container button:hover {
+            background-color: #218838;
+        }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <img src="logo.png" alt="Logo"> <!-- Add your logo here -->
+    <h2>Fill in Your Details</h2>
+    <form id="infoForm">
+        <label for="name">Name:</label>
+        <input type="text" id="name" name="name" required>
+
+        <label for="mobile">Mobile Number:</label>
+        <input type="text" id="mobile" name="mobile" required>
+
+        <label for="email">Email ID:</label>
+        <input type="email" id="email" name="email" required>
+
+        <label for="address">Full Address:</label>
+        <textarea id="address" name="address" rows="2" required></textarea>
+
+        <button type="submit">Submit</button>
+    </form>
+</div>
+
+<!-- Include jsPDF and pdf-lib from CDN -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/pdf-lib@1.17.1/dist/pdf-lib.min.js"></script>
+
+<script>
+    document.getElementById('infoForm').addEventListener('submit', async function(event) {
+        event.preventDefault();
+
+        const name = document.getElementById('name').value;
+        const mobile = document.getElementById('mobile').value;
+        const email = document.getElementById('email').value;
+        const address = document.getElementById('address').value;
+
+        // Debugging: Log the form data
+        console.log("Form submitted with data:", { name, mobile, email, address });
+
+        try {
+            const { jsPDF } = window.jspdf;
+            const { PDFDocument } = PDFLib;
+
+            // Load the existing PDF (pdf.pdf) from the same directory
+            const existingPDFBytes = await fetch('pdf.pdf').then(res => {
+                if (!res.ok) throw new Error('Failed to fetch existing PDF');
+                return res.arrayBuffer();
+            });
+
+            // Load the existing PDF using pdf-lib
+            const existingPDF = await PDFDocument.load(existingPDFBytes);
+            console.log("Existing PDF loaded successfully.");
+
+            // Create a new page to draw the generated content
+            const page = existingPDF.getPages()[0]; // Get the first page of the existing PDF
+
+            // Draw the new content over the existing page
+            const { width, height } = page.getSize();
+
+            // Set the font for the new content
+            const helveticaFont = await existingPDF.embedFont(PDFLib.StandardFonts.Helvetica);
+            const helveticaBoldFont = await existingPDF.embedFont(PDFLib.StandardFonts.HelveticaBold);
+
+            // Add the new content
+            page.drawText(name, { x: 50, y: height - 70, size: 22, font: helveticaBoldFont, color: PDFLib.rgb(0, 0, 0) });
+            page.drawText(`${mobile} | ${email}`, { x: 50, y: height - 90, size: 12, font: helveticaFont, color: PDFLib.rgb(0, 0, 0) });
+            const addressLines = address.split('\n');
+            addressLines.forEach((line, index) => {
+                page.drawText(line, { x: 50, y: height - 100 - (index * 10), size: 10, font: helveticaFont, color: PDFLib.rgb(0, 0, 0) });
+            });
+
+            // Save the new PDF with both contents combined
+            const finalPDFBytes = await existingPDF.save();
+
+            // Create Blob and download the combined PDF
+            const finalPDFBlob = new Blob([finalPDFBytes], { type: 'application/pdf' });
+
+            // Trigger download
+            const downloadLink = document.createElement('a');
+            downloadLink.href = URL.createObjectURL(finalPDFBlob);
+            downloadLink.download = `${name}_${mobile}.pdf`;
+            downloadLink.click();
+
+            // Debugging: Confirm PDF generated and download triggered
+            console.log("PDF generated and download triggered.");
+
+        } catch (error) {
+            // Log any errors that occur during the PDF generation
+            console.error("Error generating PDF:", error);
+            alert(`An error occurred while generating the PDF: ${error.message}`);
+        }
+    });
+</script>
+
+</body>
+</html>
